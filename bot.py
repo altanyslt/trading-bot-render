@@ -33,6 +33,7 @@ import pytz
 from threading import Thread
 from flask import Flask, jsonify
 import logging
+import requests  # ← YENİ: User-Agent için gerekli
 
 from telegram import Update
 from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
@@ -120,9 +121,14 @@ NIGHT_MODE_END = 9  # Gece modu bitiş saati
 
 # Default favori listesi
 DEFAULT_FAVORITES = [
-    "ASELS.IS", "THYAO.IS", "SASA.IS", 
-    "BTC-USD", "ETH-USD", "XU100.IS","TAVHL.IS","ENJSA.IS","FROTO.IS","GARAN.IS","MGROS.IS","BIMAS.IS","SDTTR.IS","AAPL","NVDA","KCHOL.IS","ENKAI.IS",
-    "TUPRS.IS","GUBRF.IS","TTRAK.IS","TOASO.IS","TABGD.IS","GOOGL","MSFT","AMZN","META","TSLA","ADSK","INTC","ADBE","QCOM","BA","KO"
+    "ASELS.IS",   # Aselsan
+    "THYAO.IS",   # Türk Hava Yolları
+    "GARAN.IS",   # Garanti Bankası
+    "BIMAS.IS",   # BIM
+    "BTC-USD",    # Bitcoin
+    "ETH-USD",    # Ethereum
+    "XU100.IS",   # BIST 100
+    "AAPL"        # Apple
 ]
 
 # İstatistik takibi
@@ -661,7 +667,7 @@ def main():
     logger.info("🚀 TRADING BOT BAŞLATILIYOR")
     logger.info("=" * 60)
     
-    # Keep-Alive başlat (Flask Sunucusu)
+    # Keep-Alive başlat
     keep_alive()
     
     # Token kontrolü

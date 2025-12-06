@@ -661,4 +661,49 @@ def main():
     logger.info("🚀 TRADING BOT BAŞLATILIYOR")
     logger.info("=" * 60)
     
-    # Keep-
+    # Keep-Alive başlat (Flask Sunucusu)
+    keep_alive()
+    
+    # Token kontrolü
+    if not TOKEN:
+        logger.error("❌ TELEGRAM_BOT_TOKEN bulunamadı!")
+        logger.error("💡 Render.com Environment Variables bölümünden ekleyin")
+        return
+    
+    logger.info(f"✅ Token yüklendi: {TOKEN[:10]}...{TOKEN[-5:]}")
+    logger.info(f"⏰ Tarama aralığı: {SCAN_INTERVAL} saniye ({SCAN_INTERVAL//60} dakika)")
+    logger.info(f"📊 Maksimum sembol: {MAX_SYMBOLS_PER_SCAN}")
+    logger.info(f"💾 Cache TTL: {CACHE_TTL} saniye")
+    logger.info(f"🌙 Gece modu: {NIGHT_MODE_START}:00 - {NIGHT_MODE_END}:00")
+    
+    # Bot oluştur
+    logger.info("🤖 Telegram bot oluşturuluyor...")
+    application = ApplicationBuilder().token(TOKEN).build()
+    
+    # Komut işleyiciler
+    application.add_handler(CommandHandler("start", start))
+    application.add_handler(CommandHandler("analiz", analiz))
+    application.add_handler(CommandHandler("favori", favori_ekle))
+    application.add_handler(CommandHandler("liste", favori_liste))
+    application.add_handler(CommandHandler("durum", durum))
+    application.add_handler(CommandHandler("yardim", yardim))
+    
+    logger.info("✅ Komut işleyiciler eklendi")
+    logger.info("=" * 60)
+    logger.info("🎉 BOT AKTIF - Telegram'dan /start ile başlatın!")
+    logger.info("=" * 60)
+    
+    # Polling başlat
+    try:
+        application.run_polling(
+            allowed_updates=Update.ALL_TYPES,
+            drop_pending_updates=True  # Eski mesajları görmezden gel
+        )
+    except KeyboardInterrupt:
+        logger.info("⚠️ Bot durduruldu (KeyboardInterrupt)")
+    except Exception as e:
+        logger.error(f"❌ Kritik hata: {e}")
+        raise
+
+if __name__ == '__main__':
+    main()

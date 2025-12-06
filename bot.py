@@ -676,7 +676,7 @@ def main():
     logger.info("🚀 TRADING BOT BAŞLATILIYOR")
     logger.info("=" * 60)
     
-    # Keep-Alive başlat
+    # Keep-Alive başlat (Render uyumasın diye)
     keep_alive()
     
     # Token kontrolü
@@ -693,13 +693,8 @@ def main():
     
     # Bot oluştur
     logger.info("🤖 Telegram bot oluşturuluyor...")
-    from telegram.ext import JobQueue
-    application = (
-        ApplicationBuilder()
-        .token(TOKEN)
-        .job_queue(JobQueue())
-        .build()
-    )
+    # DÜZELTME BURADA: JobQueue manuel eklenmez, otomatik gelir.
+    application = ApplicationBuilder().token(TOKEN).build()
     
     # Komut işleyiciler
     application.add_handler(CommandHandler("start", start))

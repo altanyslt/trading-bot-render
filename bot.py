@@ -1,6 +1,6 @@
 """
 ═══════════════════════════════════════════════════════════════
-ALGORITMIK TRADING BOT - RENDER.COM FINAL FIXED VERSION
+ALGORITMIK TRADING BOT - RENDER.COM FINAL FIXED VERSION v2
 ═══════════════════════════════════════════════════════════════
 """
 
@@ -88,7 +88,7 @@ class TradingBrain:
         self.cache = {k: v for k, v in self.cache.items() if now - v[1] < self.cache_ttl * 2}
     
     def get_data(self, symbol, timeframe):
-        # TİRE DÜZELTME (Fix Hyphen Issue)
+        # TİRE DÜZELTME
         symbol = symbol.replace('—', '-').replace('–', '-') 
         
         cache_key = f"{symbol}_{timeframe}"
@@ -100,20 +100,26 @@ class TradingBrain:
         
         try:
             config = self.timeframes[timeframe]
+            
+            # --- GÜÇLENDİRİLMİŞ ANTI-BLOCK AYARLARI ---
             session = requests.Session()
             session.headers.update({
-                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36",
+                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+                "Accept-Language": "en-US,en;q=0.9",
+                "Accept-Encoding": "gzip, deflate, br",
+                "Connection": "keep-alive"
             })
             
             df = yf.download(
                 symbol, period=config['period'], interval=config['interval'], 
-                progress=False, auto_adjust=False, threads=False, timeout=15, session=session
+                progress=False, auto_adjust=False, threads=False, timeout=20, session=session
             )
             
             if isinstance(df.columns, pd.MultiIndex): df.columns = df.columns.get_level_values(0)
             
             if df.empty or len(df) < 20: 
-                logger.warning(f"⚠️ Yetersiz veri: {symbol}")
+                # Hata logunu sessize al (spam olmasın diye)
                 return None
             
             self.cache[cache_key] = (df, now)
@@ -166,10 +172,9 @@ class TradingBrain:
         return round(total_score, 2) if valid else None
 
     def analyze_symbol_detailed(self, symbol):
-        # TİRE DÜZELTME
         symbol = symbol.replace('—', '-').replace('–', '-')
         score = self.analyze_symbol_score_only(symbol)
-        if score is None: return f"❌ <b>{symbol}</b>: Veri alınamadı."
+        if score is None: return f"❌ <b>{symbol}</b>: Veri alınamadı (Yahoo Engeli)."
         
         icon = "⚪"
         if score >= 2.0: icon = "🚀"
@@ -191,12 +196,11 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     await update.message.reply_text(
         "🦅 <b>Trading Bot Aktif!</b>\n"
-        "Otomatik tarama motoru çalışıyor.\n"
-        "Her 15 dakikada bir kontrol edip haber vereceğim.", 
+        "Otomatik tarama motoru çalışıyor.", 
         parse_mode='HTML'
     )
     
-    # JobQueue Fix: Hata önleyici kontrol
+    # JOBQUEUE FIX: Artık hata vermeyecek
     if context.job_queue:
         current_jobs = context.job_queue.get_jobs_by_name(f'auto_scan_{chat_id}')
         for job in current_jobs: job.schedule_removal()
@@ -206,12 +210,12 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             chat_id=chat_id, name=f'auto_scan_{chat_id}', data=context.user_data
         )
     else:
-        logger.error("❌ JobQueue bulunamadı!")
+        # Fallback (Yedek plan)
+        await update.message.reply_text("⚠️ Otomatik motor başlatılamadı, manuel mod aktif.")
 
 async def otomatik_tarama(context: ContextTypes.DEFAULT_TYPE):
     job = context.job
     favorites = job.data.get('favorites', DEFAULT_FAVORITES)
-    
     now = datetime.now(pytz.timezone('Europe/Istanbul'))
     if NIGHT_MODE_START <= now.hour or now.hour < NIGHT_MODE_END: return
 
@@ -235,10 +239,7 @@ async def otomatik_tarama(context: ContextTypes.DEFAULT_TYPE):
 async def analiz(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not context.args: return await update.message.reply_text("❌ Örn: /analiz ASELS.IS")
     
-    symbol = context.args[0].upper()
-    # Tire düzeltmesi burada da yapılıyor
-    symbol = symbol.replace('—', '-').replace('–', '-')
-    
+    symbol = context.args[0].upper().replace('—', '-').replace('–', '-')
     msg = await update.message.reply_text(f"🔍 {symbol} analiz ediliyor...")
     
     try:
@@ -271,7 +272,7 @@ async def yardim(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("Komutlar: /start, /analiz, /favori, /liste, /durum")
 
 # ═══════════════════════════════════════════════════════════════
-# 6. MAIN
+# 6. MAIN EXECUTION
 # ═══════════════════════════════════════════════════════════════
 def main():
     keep_alive()
@@ -280,8 +281,10 @@ def main():
         logger.error("❌ Token yok!")
         return
 
-    # JobQueue'yu BURADA MANUEL OLUŞTURUYORUZ (Hata Çözümü)
+    # JobQueue'yu BURADA MANUEL OLUŞTURUYORUZ (KESİN ÇÖZÜM)
     app_builder = ApplicationBuilder().token(TOKEN)
+    # JobQueue'yu explicitly ekliyoruz
+    app_builder.job_queue(JobQueue()) 
     application = app_builder.build()
     
     application.add_handler(CommandHandler("start", start))

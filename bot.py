@@ -121,14 +121,9 @@ NIGHT_MODE_END = 9  # Gece modu bitiş saati
 
 # Default favori listesi
 DEFAULT_FAVORITES = [
-    "ASELS.IS",   # Aselsan
-    "THYAO.IS",   # Türk Hava Yolları
-    "GARAN.IS",   # Garanti Bankası
-    "BIMAS.IS",   # BIM
-    "BTC-USD",    # Bitcoin
-    "ETH-USD",    # Ethereum
-    "XU100.IS",   # BIST 100
-    "AAPL"        # Apple
+    "ASELS.IS", "THYAO.IS", "SASA.IS", 
+    "BTC-USD", "ETH-USD", "XU100.IS","TAVHL.IS","ENJSA.IS","FROTO.IS","GARAN.IS","MGROS.IS","BIMAS.IS","SDTTR.IS","AAPL","NVDA","KCHOL.IS","ENKAI.IS",
+    "TUPRS.IS","GUBRF.IS","TTRAK.IS","TOASO.IS","TABGD.IS","GOOGL","MSFT","AMZN","META","TSLA","ADSK","INTC","ADBE","QCOM","BA","KO"
 ]
 
 # İstatistik takibi
@@ -173,8 +168,9 @@ class TradingBrain:
     
     def get_data(self, symbol, timeframe):
         """
-        Veri çekme fonksiyonu
+        Veri çekme fonksiyonu - ANTI-BLOCK VERSION
         - Cache kontrolü
+        - User-Agent spoofing (Yahoo Finance engel bypass)
         - Timeout koruması
         - Hata yönetimi
         """
@@ -191,6 +187,18 @@ class TradingBrain:
         try:
             config = self.timeframes[timeframe]
             
+            # 🛡️ ANTI-BLOCK: User-Agent Spoofing
+            session = requests.Session()
+            session.headers.update({
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+                "Accept-Language": "en-US,en;q=0.5",
+                "Accept-Encoding": "gzip, deflate, br",
+                "DNT": "1",
+                "Connection": "keep-alive",
+                "Upgrade-Insecure-Requests": "1"
+            })
+            
             logger.debug(f"🌐 API request: {symbol} ({timeframe})")
             
             # KRITIK: threads=False Render için zorunlu!
@@ -201,7 +209,8 @@ class TradingBrain:
                 progress=False, 
                 auto_adjust=False, 
                 threads=False,  # Render CPU çakışma önleme
-                timeout=10  # 10 saniye timeout
+                timeout=15,     # Timeout artırıldı
+                session=session # Sahte browser kimliği
             )
             
             # Multi-index kontrolü
@@ -684,7 +693,13 @@ def main():
     
     # Bot oluştur
     logger.info("🤖 Telegram bot oluşturuluyor...")
-    application = ApplicationBuilder().token(TOKEN).build()
+    from telegram.ext import JobQueue
+    application = (
+        ApplicationBuilder()
+        .token(TOKEN)
+        .job_queue(JobQueue())
+        .build()
+    )
     
     # Komut işleyiciler
     application.add_handler(CommandHandler("start", start))
